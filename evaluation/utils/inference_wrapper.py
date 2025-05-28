@@ -258,6 +258,22 @@ class MockInferenceWrapper(InferenceWrapper):
         self.random = random
         self.random.seed(42)  # For reproducibility
         
+        try:
+            import datasets
+            import pandas as pd
+            
+            self.dataset = datasets.load_dataset("spawn99/GPQA-diamond-ClaudeR1")
+            self.df = pd.DataFrame(self.dataset["train"])
+            
+            self.question_to_answer = {}
+            for _, row in self.df.iterrows():
+                self.question_to_answer[row["question"]] = row["correct_answer"]
+                
+            logger.info(f"Loaded {len(self.df)} questions from GPQA diamond dataset for mock inference")
+        except Exception as e:
+            logger.warning(f"Failed to load GPQA diamond dataset for mock inference: {e}")
+            self.question_to_answer = {}
+        
         logger.info(f"Initialized mock inference wrapper with accuracy target: {accuracy_target:.4f}")
     
     def generate(
@@ -352,15 +368,19 @@ class MockInferenceWrapper(InferenceWrapper):
         Returns:
             Response with answer choice.
         """
-        choices = ["A", "B", "C", "D"]
+        correct_answer = self._get_correct_answer(question)
         
-        correct_answer = "A"
+        if correct_answer is None:
+            choices = ["A", "B", "C", "D"]
+            correct_answer = self.random.choice(choices)
+        
+        # Generate a list of plausible incorrect answers
+        incorrect_answers = self._generate_incorrect_answers(correct_answer)
         
         if is_correct:
             answer = correct_answer
         else:
-            incorrect_choices = [c for c in choices if c != correct_answer]
-            answer = self.random.choice(incorrect_choices)
+            answer = self.random.choice(incorrect_answers)
         
         templates = [
             f"After analyzing the problem, I believe the answer is {answer}.",
@@ -370,12 +390,56 @@ class MockInferenceWrapper(InferenceWrapper):
             f"This is a question about quantum mechanics. Based on the principles of quantum theory, the answer is {answer}.",
             f"The correct answer is {answer}.",
             f"Answer: {answer}",
-            f"Option {answer} is correct.",
-            f"I select option {answer}.",
+            f"I select {answer} as the answer.",
             f"{answer} is the right answer.",
         ]
         
         return self.random.choice(templates)
+    
+    def _get_correct_answer(self, question: str) -> Optional[str]:
+        """
+        Get the correct answer for a question.
+        
+        Args:
+            question: Input question.
+            
+        Returns:
+            Correct answer for the question or None if not found.
+        """
+        for q, a in self.question_to_answer.items():
+            if question.strip() in q or q in question.strip():
+                return a
+        
+        return None
+    
+    def _generate_incorrect_answers(self, correct_answer: str) -> List[str]:
+        """
+        Generate plausible incorrect answers.
+        
+        Args:
+            correct_answer: Correct answer.
+            
+        Returns:
+            List of plausible incorrect answers.
+        """
+        if self.question_to_answer:
+            other_answers = list(set(self.question_to_answer.values()))
+            other_answers = [a for a in other_answers if a != correct_answer]
+            
+            if other_answers:
+                return other_answers[:3]  # Return up to 3 incorrect answers
+        
+        if correct_answer.isalpha():
+            choices = ["A", "B", "C", "D"]
+            return [c for c in choices if c != correct_answer]
+        elif correct_answer.replace(".", "", 1).replace("-", "", 1).isdigit():
+            try:
+                num = float(correct_answer)
+                return [str(num * 0.5), str(num * 2), str(num + 1)]
+            except:
+                pass
+        
+        return ["incorrect answer 1", "incorrect answer 2", "incorrect answer 3"]
 
 
 class SGLangInferenceWrapper(InferenceWrapper):
