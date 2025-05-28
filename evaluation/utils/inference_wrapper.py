@@ -368,6 +368,11 @@ class MockInferenceWrapper(InferenceWrapper):
             f"I'll solve this step by step. [... detailed explanation ...] Therefore, the answer is {answer}.",
             f"Let me work through this. [... calculations ...] The final answer is {answer}.",
             f"This is a question about quantum mechanics. Based on the principles of quantum theory, the answer is {answer}.",
+            f"The correct answer is {answer}.",
+            f"Answer: {answer}",
+            f"Option {answer} is correct.",
+            f"I select option {answer}.",
+            f"{answer} is the right answer.",
         ]
         
         return self.random.choice(templates)
