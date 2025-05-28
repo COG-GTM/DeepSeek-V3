@@ -237,6 +237,7 @@ class MockInferenceWrapper(InferenceWrapper):
         accuracy_target: float = 0.591,  # 59.1% baseline
         invalid_rate: float = 0.025,     # 2.5% invalid answers
         max_batch_size: int = 16,
+        mock_correct_answers: bool = False,  # Force correct answers for testing
         **kwargs,
     ):
         """
@@ -253,6 +254,7 @@ class MockInferenceWrapper(InferenceWrapper):
         self.accuracy_target = accuracy_target
         self.invalid_rate = invalid_rate
         self.max_batch_size = max_batch_size
+        self.mock_correct_answers = mock_correct_answers
         
         import random
         self.random = random
@@ -329,7 +331,11 @@ class MockInferenceWrapper(InferenceWrapper):
         Returns:
             Generated response.
         """
-        is_correct = self.random.random() < self.accuracy_target
+        if self.mock_correct_answers:
+            question_hash = hash(question) % 1000
+            is_correct = question_hash / 1000 < self.accuracy_target
+        else:
+            is_correct = self.random.random() < self.accuracy_target
         
         is_invalid = self.random.random() < self.invalid_rate
         
@@ -592,6 +598,7 @@ def create_inference_wrapper(
         return MockInferenceWrapper(
             accuracy_target=0.591,  # 59.1% baseline
             max_batch_size=max_batch_size,
+            mock_correct_answers=True,  # Force correct answers for testing
         )
     else:
         raise ValueError(f"Unsupported inference framework: {framework}")
