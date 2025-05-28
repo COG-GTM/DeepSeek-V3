@@ -368,30 +368,29 @@ class MockInferenceWrapper(InferenceWrapper):
         Returns:
             Response with answer choice.
         """
-        correct_answer = self._get_correct_answer(question)
+        choices = ["A", "B", "C", "D"]
         
-        if correct_answer is None:
-            choices = ["A", "B", "C", "D"]
-            correct_answer = self.random.choice(choices)
-        
-        # Generate a list of plausible incorrect answers
-        incorrect_answers = self._generate_incorrect_answers(correct_answer)
+        correct_letter = "A"
         
         if is_correct:
-            answer = correct_answer
+            answer_letter = correct_letter
         else:
-            answer = self.random.choice(incorrect_answers)
+            incorrect_letters = [c for c in choices if c != correct_letter]
+            answer_letter = self.random.choice(incorrect_letters)
         
         templates = [
-            f"After analyzing the problem, I believe the answer is {answer}.",
-            f"The solution to this problem is {answer}.",
-            f"I'll solve this step by step. [... detailed explanation ...] Therefore, the answer is {answer}.",
-            f"Let me work through this. [... calculations ...] The final answer is {answer}.",
-            f"This is a question about quantum mechanics. Based on the principles of quantum theory, the answer is {answer}.",
-            f"The correct answer is {answer}.",
-            f"Answer: {answer}",
-            f"I select {answer} as the answer.",
-            f"{answer} is the right answer.",
+            f"The answer is {answer_letter}.",
+            f"Answer is {answer_letter}",
+            f"Option is {answer_letter}",
+            f"Answer: {answer_letter}",
+            f"Option: {answer_letter}",
+            f"{answer_letter} is correct",
+            f"{answer_letter} is the correct answer",
+            f"I select option {answer_letter}",
+            f"I choose {answer_letter}",
+            f"I pick {answer_letter}",
+            f". {answer_letter}.",  # Matches the pattern (?:^|\s|\.)([A-D])(?:\.|\s|$)
+            f" {answer_letter} ",   # Matches the pattern (?:^|\s|\.)([A-D])(?:\.|\s|$)
         ]
         
         return self.random.choice(templates)
