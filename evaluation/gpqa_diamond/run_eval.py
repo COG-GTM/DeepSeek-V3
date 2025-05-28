@@ -49,9 +49,9 @@ def parse_args():
     parser.add_argument(
         "--inference_framework",
         type=str,
-        choices=["native", "sglang"],
+        choices=["native", "sglang", "mock"],
         default="sglang",
-        help="Inference framework to use (native or sglang)",
+        help="Inference framework to use (native, sglang, or mock)",
     )
     parser.add_argument(
         "--batch_size",
