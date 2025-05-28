@@ -1,7 +1,7 @@
 import os
 import json
 from argparse import ArgumentParser
-from typing import List
+from typing import List, Tuple
 
 import torch
 import torch.distributed as dist
@@ -9,6 +9,49 @@ from transformers import AutoTokenizer
 from safetensors.torch import load_model
 
 from model import Transformer, ModelArgs
+
+
+def count_parameters(model, args):
+    """
+    Count the total parameters and activated parameters in a MoE model.
+    
+    Args:
+        model (Transformer): The transformer model
+        args (ModelArgs): Model arguments containing MoE parameters
+        
+    Returns:
+        tuple: (total_params, activated_params)
+    """
+    total_params = sum(p.numel() for p in model.parameters())
+    
+    activated_params = 0
+    
+    for name, module in model.named_modules():
+        if 'experts' not in name or 'shared_experts' in name:
+            activated_params += sum(p.numel() for p in module.parameters() if not any('experts' in pname and 'shared_experts' not in pname for pname, _ in model.named_parameters() if p is _))
+    
+    moe_layers = args.n_layers - args.n_dense_layers
+    if moe_layers > 0 and hasattr(args, 'n_routed_experts') and hasattr(args, 'n_activated_experts'):
+        expert_params = 0
+        for module in model.modules():
+            if hasattr(module, 'experts') and hasattr(module.experts, '__len__'):
+                for expert in module.experts:
+                    if expert is not None:
+                        expert_params = sum(p.numel() for p in expert.parameters())
+                        break
+                break
+        
+        activated_params += expert_params * args.n_activated_experts * moe_layers
+        
+        shared_expert_params = 0
+        for module in model.modules():
+            if hasattr(module, 'shared_experts'):
+                shared_expert_params += sum(p.numel() for p in module.shared_experts.parameters())
+        activated_params += shared_expert_params
+    else:
+        activated_params = total_params
+    
+    return total_params, activated_params
 
 
 def sample(logits, temperature: float = 1.0):
@@ -115,6 +158,10 @@ def main(
     with torch.device("cuda"):
         model = Transformer(args)
     tokenizer = AutoTokenizer.from_pretrained(ckpt_path)
+    
+    total_params, activated_params = count_parameters(model, args)
+    print(f"Model loaded with {total_params:,} total parameters ({activated_params:,} activated per token)")
+    
     tokenizer.decode(generate(model, [tokenizer.encode("DeepSeek")], 2, -1, 1.)[0])
     load_model(model, os.path.join(ckpt_path, f"model{rank}-mp{world_size}.safetensors"))
 
