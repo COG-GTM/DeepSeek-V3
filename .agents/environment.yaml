@@ -1,0 +1,67 @@
+initialize: |
+  python3 -m venv .venv
+  source .venv/bin/activate
+  pip install --upgrade pip
+  pip install -r inference/requirements.txt
+  pip install datasets pandas numpy matplotlib
+
+maintenance: |
+  source .venv/bin/activate
+  pip install -r inference/requirements.txt
+  pip install datasets pandas numpy matplotlib
+
+knowledge:
+  - name: project_overview
+    contents: |
+      DeepSeek-V3 is a 671B parameter Mixture-of-Experts (MoE) language model.
+      This repo contains inference code and an evaluation framework.
+      Python 3.10+ required (README specifies Linux with Python 3.10 only).
+      No setup.py, pyproject.toml, Dockerfile, or Makefile in the repo.
+      No pre-commit hooks configured.
+
+  - name: dependencies
+    contents: |
+      # Core inference dependencies (inference/requirements.txt):
+      #   torch==2.4.1, triton==3.0.0, transformers==4.46.3, safetensors==0.4.5
+      # Evaluation dependencies (not in requirements.txt, needed by evaluation/):
+      #   datasets, pandas, numpy, matplotlib
+      source .venv/bin/activate
+      pip install -r inference/requirements.txt
+      pip install datasets pandas numpy matplotlib
+
+  - name: test
+    contents: |
+      # No test suite in the repo.
+      # Verify imports work:
+      source .venv/bin/activate
+      cd inference && python -c "from kernel import act_quant, weight_dequant, fp8_gemm; from model import Transformer, ModelArgs; from generate import sample, generate; print('OK')"
+      cd .. && python -c "from evaluation.gpqa_diamond.data_loader import *; from evaluation.gpqa_diamond.metrics import *; from evaluation.gpqa_diamond.evaluator import *; from evaluation.utils.result_processor import *; from evaluation.utils.inference_wrapper import *; print('OK')"
+
+  - name: lint
+    contents: |
+      # No linter configured in this repo.
+      # Basic syntax check:
+      source .venv/bin/activate
+      python -m py_compile inference/model.py
+      python -m py_compile inference/kernel.py
+      python -m py_compile inference/generate.py
+      python -m py_compile inference/convert.py
+      python -m py_compile inference/fp8_cast_bf16.py
+
+  - name: startup
+    contents: |
+      # Running inference requires NVIDIA GPUs and model weights.
+      # Interactive chat (requires 2 nodes with 8 GPUs each for 671B model):
+      #   torchrun --nnodes 2 --nproc-per-node 8 --node-rank $RANK --master-addr $ADDR \
+      #     inference/generate.py --ckpt-path /path/to/model --config inference/configs/config_671B.json --interactive
+      # Evaluation:
+      #   python -m evaluation.gpqa_diamond.run_eval --model_path /path/to/model --config_path inference/configs/config_671B.json
+
+  - name: notes
+    contents: |
+      - The kernel.py uses Triton for custom GPU kernels (FP8 quantization/dequantization, FP8 GEMM).
+      - model.py implements the full DeepSeek-V3 transformer with MLA (Multi-head Latent Attention) and MoE.
+      - Three model configs available: config_16B.json, config_236B.json, config_671B.json.
+      - FP8 to BF16 weight conversion: python inference/fp8_cast_bf16.py --input-fp8-hf-path /path/to/fp8 --output-bf16-hf-path /path/to/bf16
+      - HF to demo format conversion: python inference/convert.py --hf-ckpt-path /path/to/hf --save-path /path/to/demo --n-experts 256 --model-parallel 16
+      - CI only has a stale issue bot (stale.yml), no build/test CI.
