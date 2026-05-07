@@ -16,7 +16,9 @@ import torch
 import transformers
 from transformers import AutoTokenizer
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_project_root = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +260,9 @@ class MockInferenceWrapper(InferenceWrapper):
         
         import random
         self.random = random
-        self.random.seed(42)  # For reproducibility
+        # NOTE: Fixed seed used intentionally for reproducible test results only.
+        # This wrapper must NOT be used in production or security-sensitive contexts.
+        self.random.seed(42)
         
         try:
             import datasets
@@ -441,7 +445,7 @@ class MockInferenceWrapper(InferenceWrapper):
             try:
                 num = float(correct_answer)
                 return [str(num * 0.5), str(num * 2), str(num + 1)]
-            except:
+            except (ValueError, TypeError):
                 pass
         
         return ["incorrect answer 1", "incorrect answer 2", "incorrect answer 3"]

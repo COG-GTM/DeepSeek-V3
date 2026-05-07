@@ -109,6 +109,8 @@ def main(
     torch.set_default_dtype(torch.bfloat16)
     torch.set_num_threads(8)
     torch.manual_seed(965)
+    if not os.path.isfile(config):
+        raise FileNotFoundError(f"Config file not found: {config}")
     with open(config) as f:
         args = ModelArgs(**json.load(f))
     print(args)
@@ -143,6 +145,8 @@ def main(
             print(completion)
             messages.append({"role": "assistant", "content": completion})
     else:
+        if not os.path.isfile(input_file):
+            raise FileNotFoundError(f"Input file not found: {input_file}")
         with open(input_file) as f:
             prompts = [line.strip() for line in f.readlines()]
         assert len(prompts) <= args.max_batch_size, f"Number of prompts exceeds maximum batch size ({args.max_batch_size})"

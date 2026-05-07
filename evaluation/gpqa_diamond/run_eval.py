@@ -13,7 +13,9 @@ import logging
 import argparse
 from typing import Dict, List, Optional, Tuple, Union, Any
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_project_root = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
 from evaluation.gpqa_diamond.evaluator import create_evaluator
 from evaluation.utils.result_processor import process_results
